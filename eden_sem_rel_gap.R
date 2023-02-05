@@ -24,59 +24,47 @@ add_sig_levels_to_graph_data <- function(graph_data, sig_levels) {
   return(graph_data)
 }
 
-load("long_participants_5.Rdata")
-load("long_participants_11_CBCL.Rdata")
-load("long_participants_11_SDQ.Rdata")
-load("long_participants_11_MIA.Rdata")
+load("participants_5.Rdata")
+load("participants_11_CBCL.Rdata")
+load("participants_11_SDQ.Rdata")
+load("participants_11_MIA.Rdata")
 
 ######## ADHD
 
-sem_vars_rel_gap_vpiq <- long_participants_5 %>% 
+sem_vars_rel_gap_vpiq_ADHD_5y <- long_participants_5 %>% 
   filter(`Cognitive Measure` == "VIQ-PIQ",
          `Psychopathology Measure` == "ADHD")
 
-sem_vars_rel_gap_vpiq <- subset(sem_vars_rel_gap_vpiq, select = c(`ID`, `Cognitive Score`,
+sem_vars_rel_gap_vpiq_ADHD_5y <- subset(sem_vars_rel_gap_vpiq_ADHD_5y, select = c(`ID`, `Cognitive Score`,
                                                                   `Psychopathology Score`))
-colnames(sem_vars_rel_gap_vpiq) <- c("ID","rel_gap_vpiq5", 
-                                             "ADHD5")
-sem_vars_rel_gap_vpiq$dep5 <- filter(long_participants_5, `Cognitive Measure` == "VIQ-PIQ", `Psychopathology Measure` == "Internalizing Disorder")$`Psychopathology Score`
-sem_vars_rel_gap_vpiq$social5 <- filter(long_participants_5, `Cognitive Measure` == "VIQ-PIQ", `Psychopathology Measure` == "Social Problems")$`Psychopathology Score`
-sem_vars_rel_gap_vpiq$conduct5 <- filter(long_participants_5, `Cognitive Measure` == "VIQ-PIQ", `Psychopathology Measure` == "Social Problems")$`Psychopathology Score`
 
-# 11Y
+colnames(sem_vars_rel_gap_vpiq_ADHD_5y) <- c("ID","rel_gap_vpiq5", 
+                                   "ADHD5")
 
-sem_vars_rel_gap_vpiq_11y <- long_participants_11_SDQ %>% 
+sem_vars_rel_gap_vpiq_ADHD_11y <- long_participants_11_SDQ %>% 
   filter(`Cognitive Measure` == "VIQ-PIQ",
          `Psychopathology Measure` == "ADHD, SDQ")
 
-sem_vars_rel_gap_vpiq_11y <- subset(sem_vars_rel_gap_vpiq_11y, select = c(`ID`, `Cognitive Score`,
+sem_vars_rel_gap_vpiq_ADHD_11y <- subset(sem_vars_rel_gap_vpiq_ADHD_11y, select = c(`ID`, `Cognitive Score`,
                                                                   `Psychopathology Score`))
-colnames(sem_vars_rel_gap_vpiq_11y) <- c("ID","rel_gap_vpiq11", 
-                                   "ADHD11")
+colnames(sem_vars_rel_gap_vpiq_ADHD_11y) <- c("ID", "rel_gap_vpiq11", 
+                                     "ADHD11")
 
-sem_vars_rel_gap_vpiq_11y$dep11 <- filter(long_participants_11_SDQ, `Cognitive Measure` == "VIQ-PIQ", `Psychopathology Measure` == "Internalizing Disorder, SDQ")$`Psychopathology Score`
-sem_vars_rel_gap_vpiq_11y$social11 <- filter(long_participants_11_SDQ, `Cognitive Measure` == "VIQ-PIQ", `Psychopathology Measure` == "Social Problems, SDQ")$`Psychopathology Score`
-sem_vars_rel_gap_vpiq_11y$conduct11 <- filter(long_participants_11_SDQ, `Cognitive Measure` == "VIQ-PIQ", `Psychopathology Measure` == "Conduct Disorder, SDQ")$`Psychopathology Score`
-
-sem_vars_rel_gap_vpiq <- left_join(sem_vars_rel_gap_vpiq, sem_vars_rel_gap_vpiq_11y)
+sem_ADHD_vars <- left_join(sem_vars_rel_gap_vpiq_ADHD_5y, sem_vars_rel_gap_vpiq_ADHD_11y)
 
 
-model_rel_gap_vpiq <- ' 
+common_ids <- intersect(na.omit(sem_ADHD_vars)$ID, sem_vars_rel_gap_vpiq_ADHD_11y$ID)
+not_matching_ids <- sem_vars_rel_gap_vpiq_ADHD_5y$ID[!sem_vars_rel_gap_vpiq_ADHD_5y$ID %in% common_ids]
+
+
+model_ADHD <- ' 
 # regressions 
-rel_gap_vpiq11 ~ rel_gap_vpiq5
-
 ADHD5 ~ rel_gap_vpiq5
-dep5 ~ rel_gap_vpiq5
-social5 ~ rel_gap_vpiq5
-conduct5 ~ rel_gap_vpiq5
-
-dep11 ~ rel_gap_vpiq5 + rel_gap_vpiq11 + dep5
-social11 ~ rel_gap_vpiq5 + rel_gap_vpiq11 + social5
-conduct11 ~ rel_gap_vpiq5 + rel_gap_vpiq11 + conduct5
+rel_gap_vpiq11 ~ rel_gap_vpiq5
 ADHD11 ~ rel_gap_vpiq5 + rel_gap_vpiq11 + ADHD5
 '
-fit_rel_gap_vpiq <- sem(model_rel_gap_vpiq, data = sem_vars_rel_gap_vpiq) 
-summary(fit_rel_gap_vpiq, standardized = TRUE)
+fit_ADHD <- sem(model_ADHD, data = sem_ADHD_vars) 
+summary(fit_ADHD, standardized = TRUE)
 parameterEstimates(fit_ADHD)
 modindices(fit_ADHD)
 
