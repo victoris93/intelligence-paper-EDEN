@@ -89,12 +89,16 @@ p5 =~ ADHD5 + dep5 + social5 + conduct5
 p11 =~ ADHD11 + dep11 + social11 + conduct11
 
 # correlations
-FSIQ5 ~~ p5
-FSIQ11 ~~ p11
+p5 ~~ FSIQ5
+p11 ~~ FSIQ11
 
-#regressions
+# auto-regressions
+FSIQ11 ~ FSIQ5
+p11 ~ p5
+
+# cross-lagged regressions
 FSIQ11 ~ p5
-p11 ~ p5 + FSIQ11
+p11 ~ FSIQ5
 '
 
 fit_pFactor <- sem(model_pFactor, data = sem_vars_fsiq) 
@@ -111,14 +115,18 @@ graph_data_fsiq_ADHD <- add_sig_levels_to_graph_data(graph_data_fsiq_ADHD, c(0.0
 ##################################################################
 
 model_ADHD <-  '
-# correlations
-FSIQ5 ~~ ADHD11
-FSIQ11 ~~ ADHD5
 
-#regressions
+# correlations
+ADHD5 ~~ FSIQ5
+ADHD11 ~~ FSIQ11
+
+# auto-regressions
 FSIQ11 ~ FSIQ5
-ADHD5 ~ FSIQ5
-ADHD11 ~ FSIQ11 + ADHD5
+ADHD11 ~ ADHD5
+
+# cross-lagged regressions
+FSIQ11 ~ ADHD5
+ADHD11 ~ FSIQ5
 '
 
 #' 
@@ -142,9 +150,9 @@ graph_data_fsiq_ADHD <- add_sig_levels_to_graph_data(graph_data_fsiq_ADHD, c(0.0
 graph_data_fsiq_ADHD %>%
   #edit_graph({ label = c("ADHD, 11y", "ADHD, 5y", "FSIQ, 11y", "FSIQ, 5y") }, element = "nodes") %>%
   edit_graph({ color = c("black", "black", "red", "red", "red", "red", "black", "black", "black", "black") }, element = "edges") %>%
-  edit_graph({ connect_from = c("top", "top", "bottom", "right", "left", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>% 
-  edit_graph({ connect_to= c("bottom", "bottom", "top", "left", "right", "top", "right", "top", "bottom", "top") }, element = "edges") %>%
-  edit_graph({ curvature= c(NA, NA, 50, NA, NA, -50, NA, NA, NA, NA) }, element = "edges") %>%
+  edit_graph({ connect_from = c("top", "top", "right", "right", "bottom", "top", "right", "top", "bottom", "top") }, element = "edges") %>% 
+  edit_graph({ connect_to= c("bottom", "bottom", "left", "left", "top", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>%
+  edit_graph({ curvature= c(NA, NA, NA, NA, 60, -60, NA, NA, NA, NA) }, element = "edges") %>%
   edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
   linetype_nonsig_edges(linetype = 2) %>%
   linetype_sig_edges(linetype = 1) %>% 
