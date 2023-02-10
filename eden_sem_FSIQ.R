@@ -52,81 +52,24 @@ sem_ADHD_vars <- left_join(sem_vars_FSIQ_ADHD_5y, sem_vars_FSIQ_ADHD_11y)
 common_ids <- intersect(na.omit(sem_ADHD_vars)$ID, sem_vars_FSIQ_ADHD_11y$ID)
 not_matching_ids <- sem_vars_FSIQ_ADHD_5y$ID[!sem_vars_FSIQ_ADHD_5y$ID %in% common_ids]
 
-##################################################################
-
-sem_vars_fsiq <- long_participants_5 %>% 
-  filter(`Cognitive Measure` == "Total IQ",
-         `Psychopathology Measure` == "ADHD")
-
-sem_vars_fsiq <- subset(sem_vars_fsiq, select = c(`ID`, `Cognitive Score`,
-                                                  `Psychopathology Score`))
-colnames(sem_vars_fsiq) <- c("ID","FSIQ5", 
-                             "ADHD5")
-sem_vars_fsiq$dep5 <- filter(long_participants_5, `Cognitive Measure` == "Total IQ", `Psychopathology Measure` == "Internalizing Disorder")$`Psychopathology Score`
-sem_vars_fsiq$social5 <- filter(long_participants_5, `Cognitive Measure` == "Total IQ", `Psychopathology Measure` == "Social Problems")$`Psychopathology Score`
-sem_vars_fsiq$conduct5 <- filter(long_participants_5, `Cognitive Measure` == "Total IQ", `Psychopathology Measure` == "Social Problems")$`Psychopathology Score`
-
-# 11Y
-
-sem_vars_fsiq_11y <- long_participants_11_SDQ %>% 
-  filter(`Cognitive Measure` == "Total IQ",
-         `Psychopathology Measure` == "ADHD, SDQ")
-
-sem_vars_fsiq_11y <- subset(sem_vars_fsiq_11y, select = c(`ID`, `Cognitive Score`,
-                                                          `Psychopathology Score`))
-colnames(sem_vars_fsiq_11y) <- c("ID","FSIQ11", 
-                                 "ADHD11")
-
-sem_vars_fsiq_11y$dep11 <- filter(long_participants_11_SDQ, `Cognitive Measure` == "Total IQ", `Psychopathology Measure` == "Internalizing Disorder, SDQ")$`Psychopathology Score`
-sem_vars_fsiq_11y$social11 <- filter(long_participants_11_SDQ, `Cognitive Measure` == "Total IQ", `Psychopathology Measure` == "Social Problems, SDQ")$`Psychopathology Score`
-sem_vars_fsiq_11y$conduct11 <- filter(long_participants_11_SDQ, `Cognitive Measure` == "Total IQ", `Psychopathology Measure` == "Conduct Disorder, SDQ")$`Psychopathology Score`
-
-sem_vars_fsiq <- left_join(sem_vars_fsiq, sem_vars_fsiq_11y)
-
-model_pFactor <-  '
-#latent psy variables
-p5 =~ ADHD5 + dep5 + social5 + conduct5
-p11 =~ ADHD11 + dep11 + social11 + conduct11
-
-# correlations
-p5 ~~ FSIQ5
-p11 ~~ FSIQ11
-
-# auto-regressions
-FSIQ11 ~ FSIQ5
-p11 ~ p5
-
-# cross-lagged regressions
-FSIQ11 ~ p5
-p11 ~ FSIQ5
-'
-
-fit_pFactor <- sem(model_pFactor, data = sem_vars_fsiq) 
-summary(fit_ADHD, standardized = TRUE)
-parameterEstimates(fit_ADHD)
-modindices(fit_ADHD)
-
-######## Visualization
-
-layout <- get_layout(fit_ADHD, layout_algorithm = "layout_on_grid")
-graph_sem(fit_ADHD, layout = layout)
-graph_data_fsiq_ADHD <- prepare_graph(model = fit_ADHD, layout = layout)
-graph_data_fsiq_ADHD <- add_sig_levels_to_graph_data(graph_data_fsiq_ADHD, c(0.05, 0.004))
-##################################################################
+# standardize variables
+sem_ADHD_vars$ADHD5_std = (sem_ADHD_vars$ADHD5 - mean(sem_ADHD_vars$ADHD5)) / sd(sem_ADHD_vars$ADHD5)
+sem_ADHD_vars$FSIQ5_std = (sem_ADHD_vars$FSIQ5 - mean(sem_ADHD_vars$FSIQ5)) / sd(sem_ADHD_vars$FSIQ5)
+sem_ADHD_vars$ADHD11_std = (sem_ADHD_vars$ADHD11 - mean(sem_ADHD_vars$ADHD11, na.rm = TRUE)) / sd(sem_ADHD_vars$ADHD11, na.rm = TRUE)
+sem_ADHD_vars$FSIQ11_std = (sem_ADHD_vars$FSIQ11 - mean(sem_ADHD_vars$FSIQ11, na.rm = TRUE)) / sd(sem_ADHD_vars$FSIQ11, na.rm = TRUE)
 
 model_ADHD <-  '
-
 # correlations
-ADHD5 ~~ FSIQ5
-ADHD11 ~~ FSIQ11
+ADHD5_std ~~ FSIQ5_std
+ADHD11_std ~~ FSIQ11_std
 
 # auto-regressions
-FSIQ11 ~ FSIQ5
-ADHD11 ~ ADHD5
+FSIQ11_std ~ FSIQ5_std
+ADHD11_std ~ ADHD5_std
 
 # cross-lagged regressions
-FSIQ11 ~ ADHD5
-ADHD11 ~ FSIQ5
+FSIQ11_std ~ ADHD5_std
+ADHD11_std ~ FSIQ5_std
 '
 
 #' 
@@ -148,7 +91,7 @@ graph_data_fsiq_ADHD <- prepare_graph(model = fit_ADHD, layout = layout)
 graph_data_fsiq_ADHD <- add_sig_levels_to_graph_data(graph_data_fsiq_ADHD, c(0.05, 0.004))
 
 graph_data_fsiq_ADHD %>%
-  #edit_graph({ label = c("ADHD, 11y", "ADHD, 5y", "FSIQ, 11y", "FSIQ, 5y") }, element = "nodes") %>%
+  edit_graph({ label = c("ADHD, 11y", "ADHD, 5y", "FSIQ, 11y", "FSIQ, 5y") }, element = "nodes") %>%
   edit_graph({ color = c("black", "black", "red", "red", "red", "red", "black", "black", "black", "black") }, element = "edges") %>%
   edit_graph({ connect_from = c("top", "top", "right", "right", "bottom", "top", "right", "top", "bottom", "top") }, element = "edges") %>% 
   edit_graph({ connect_to= c("bottom", "bottom", "left", "left", "top", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>%
@@ -181,14 +124,27 @@ colnames(sem_vars_FSIQ_dep_11y) <- c("ID", "FSIQ11",
 
 sem_dep_vars <- left_join(sem_vars_FSIQ_dep_5y, sem_vars_FSIQ_dep_11y)
 
+# standardize variables
+sem_dep_vars$dep5_std = (sem_dep_vars$dep5 - mean(sem_dep_vars$dep5)) / sd(sem_dep_vars$dep5)
+sem_dep_vars$FSIQ5_std = (sem_dep_vars$FSIQ5 - mean(sem_dep_vars$FSIQ5)) / sd(sem_dep_vars$FSIQ5)
+sem_dep_vars$dep11_std = (sem_dep_vars$dep11 - mean(sem_dep_vars$dep11, na.rm = TRUE)) / sd(sem_dep_vars$dep11, na.rm = TRUE)
+sem_dep_vars$FSIQ11_std = (sem_dep_vars$FSIQ11 - mean(sem_dep_vars$FSIQ11, na.rm = TRUE)) / sd(sem_dep_vars$FSIQ11, na.rm = TRUE)
+
 model_dep <- ' 
-# regressions 
-dep5 ~ FSIQ5
-FSIQ11 ~ FSIQ5
-dep11 ~ FSIQ5 + FSIQ11 + dep5
+# correlations
+dep5_std ~~ FSIQ5_std
+dep11_std ~~ FSIQ11_std
+
+# auto-regressions
+FSIQ11_std ~ FSIQ5_std
+dep11_std ~ dep5_std
+
+# cross-lagged regressions
+FSIQ11_std ~ dep5_std
+dep11_std ~ FSIQ5_std
 '
 
-fit_dep <- sem(model_dep, data = sem_dep_vars) 
+fit_dep <- sem(model_dep, data = sem_dep_vars)
 summary(fit_dep, standardized = TRUE)
 parameterEstimates(fit_dep)
 modindices(fit_dep)
@@ -202,11 +158,13 @@ graph_data_fsiq_dep <- add_sig_levels_to_graph_data(graph_data_fsiq_dep, c(0.05,
 
 graph_data_fsiq_dep %>%
   edit_graph({ label = c("Int.Dis., 11y", "Int.Dis., 5y", "FSIQ, 11y", "FSIQ, 5y") }, element = "nodes") %>%
-  edit_graph({ color = c("black", "black", "red", "red", "black", "black", "black", "black", "black") }, element = "edges") %>%
-  edit_graph({ connect_from = c("top", "right", "top", "top", "right", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ connect_to= c("bottom", "left", "bottom", "bottom", "left", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
-  linetype_nonsig_edges(linetype = 2) %>% 
+  edit_graph({ color = c("black", "black", "red", "red", "red", "red", "black", "black", "black", "black") }, element = "edges") %>%
+  edit_graph({ connect_from = c("top", "top", "right", "right", "bottom", "top", "right", "top", "bottom", "top") }, element = "edges") %>% 
+  edit_graph({ connect_to= c("bottom", "bottom", "left", "left", "top", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>%
+  edit_graph({ curvature= c(NA, NA, NA, NA, 60, -60, NA, NA, NA, NA) }, element = "edges") %>%
+  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
+  linetype_nonsig_edges(linetype = 2) %>%
+  linetype_sig_edges(linetype = 1) %>% 
   plot()
 
 ######## Social Problems
@@ -232,12 +190,24 @@ colnames(sem_vars_FSIQ_social_11y) <- c("ID", "FSIQ11",
 
 sem_social_vars <- left_join(sem_vars_FSIQ_social_5y, sem_vars_FSIQ_social_11y)
 
+# standardize variables
+sem_social_vars$social5_std = (sem_social_vars$social5 - mean(sem_social_vars$social5)) / sd(sem_social_vars$social5)
+sem_social_vars$FSIQ5_std = (sem_social_vars$FSIQ5 - mean(sem_social_vars$FSIQ5)) / sd(sem_social_vars$FSIQ5)
+sem_social_vars$social11_std = (sem_social_vars$social11 - mean(sem_social_vars$social11, na.rm = TRUE)) / sd(sem_social_vars$social11, na.rm = TRUE)
+sem_social_vars$FSIQ11_std = (sem_social_vars$FSIQ11 - mean(sem_social_vars$FSIQ11, na.rm = TRUE)) / sd(sem_social_vars$FSIQ11, na.rm = TRUE)
 
 model_social <- ' 
-# regressions 
-social5 ~ FSIQ5
-FSIQ11 ~ FSIQ5
-social11 ~ FSIQ5 + FSIQ11 + social5
+# correlations
+social5_std ~~ FSIQ5_std
+social11_std ~~ FSIQ11_std
+
+# auto-regressions
+FSIQ11_std ~ FSIQ5_std
+social11_std ~ social5_std
+
+# cross-lagged regressions
+FSIQ11_std ~ social5_std
+social11_std ~ FSIQ5_std
 '
 
 fit_social <- sem(model_social, data = sem_social_vars) 
@@ -252,13 +222,15 @@ graph_sem(fit_social, layout = layout)
 graph_data_fsiq_social <- prepare_graph(model = fit_social, layout = layout)
 graph_data_fsiq_social <- add_sig_levels_to_graph_data(graph_data_fsiq_social, c(0.05, 0.004))
 
-graph_data_rel_gap_vpiq_social %>%
+graph_data_fsiq_social %>%
   edit_graph({ label = c("FSIQ, 11y", "FSIQ, 5y", "Social Pr., 11y", "Social Pr., 5y") }, element = "nodes") %>%
-  edit_graph({ color = c("black", "black", "red", "red", "black", "black", "black", "black", "black") }, element = "edges") %>%
-  edit_graph({ connect_from = c("top", "right", "top", "top", "right", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ connect_to= c("bottom", "left", "bottom", "bottom", "left", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
-  linetype_nonsig_edges(linetype = 2) %>% 
+  edit_graph({ color = c("black", "black", "red", "red", "red", "red", "black", "black", "black", "black") }, element = "edges") %>%
+  edit_graph({ connect_from = c("top", "top", "right", "right", "bottom", "top", "right", "top", "bottom", "top") }, element = "edges") %>% 
+  edit_graph({ connect_to= c("bottom", "bottom", "left", "left", "top", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>%
+  edit_graph({ curvature= c(NA, NA, NA, NA, 60, -60, NA, NA, NA, NA) }, element = "edges") %>%
+  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
+  linetype_nonsig_edges(linetype = 2) %>%
+  linetype_sig_edges(linetype = 1) %>% 
   plot()
 
 ######## Conduct Disorder
@@ -284,11 +256,24 @@ colnames(sem_vars_FSIQ_conduct_11y) <- c("ID", "FSIQ11",
 
 sem_conduct_vars <- left_join(sem_vars_FSIQ_conduct_5y, sem_vars_FSIQ_conduct_11y)
 
+# standardize variables
+sem_conduct_vars$conduct5_std = (sem_conduct_vars$conduct5 - mean(sem_conduct_vars$conduct5)) / sd(sem_conduct_vars$conduct5)
+sem_conduct_vars$FSIQ5_std = (sem_conduct_vars$FSIQ5 - mean(sem_conduct_vars$FSIQ5)) / sd(sem_conduct_vars$FSIQ5)
+sem_conduct_vars$conduct11_std = (sem_conduct_vars$conduct11 - mean(sem_conduct_vars$conduct11, na.rm = TRUE)) / sd(sem_conduct_vars$conduct11, na.rm = TRUE)
+sem_conduct_vars$FSIQ11_std = (sem_conduct_vars$FSIQ11 - mean(sem_conduct_vars$FSIQ11, na.rm = TRUE)) / sd(sem_conduct_vars$FSIQ11, na.rm = TRUE)
+
 model_conduct <- ' 
-# regressions 
-conduct5 ~ FSIQ5
-FSIQ11 ~ FSIQ5
-conduct11 ~ FSIQ5 + FSIQ11 + conduct5
+# correlations
+conduct5_std ~~ FSIQ5_std
+conduct11_std ~~ FSIQ11_std
+
+# auto-regressions
+FSIQ11_std ~ FSIQ5_std
+conduct11_std ~ conduct5_std
+
+# cross-lagged regressions
+FSIQ11_std ~ conduct5_std
+conduct11_std ~ FSIQ5_std
 '
 fit_conduct <- sem(model_conduct, data = sem_conduct_vars) 
 summary(fit_conduct, standardized = TRUE)
@@ -302,13 +287,14 @@ graph_sem(fit_conduct, layout = layout)
 graph_data_fsiq_conduct <- prepare_graph(model = fit_conduct, layout = layout)
 graph_data_fsiq_conduct <- add_sig_levels_to_graph_data(graph_data_fsiq_conduct, c(0.05, 0.004))
 
-graph_data_rel_gap_vpiq_conduct %>%
+graph_data_fsiq_conduct %>%
   edit_graph({ label = c("Conduct Dis., 11y", "Conduct Dis., 5y", "FSIQ, 11y", "FSIQ, 5y") }, element = "nodes") %>%
-  edit_graph({ color = c("black", "black", "red", "red", "black", "black", "black", "black", "black") }, element = "edges") %>%
-  edit_graph({ connect_from = c("top", "right", "top", "top", "right", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ connect_to= c("bottom", "left", "bottom", "bottom", "left", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
-  linetype_nonsig_edges(linetype = 2) %>% 
+  edit_graph({ color = c("black", "black", "red", "red", "red", "red", "black", "black", "black", "black") }, element = "edges") %>%
+  edit_graph({ connect_from = c("top", "top", "right", "right", "bottom", "top", "right", "top", "bottom", "top") }, element = "edges") %>% 
+  edit_graph({ connect_to= c("bottom", "bottom", "left", "left", "top", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>%
+  edit_graph({ curvature= c(NA, NA, NA, NA, 60, -60, NA, NA, NA, NA) }, element = "edges") %>%
+  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
+  linetype_nonsig_edges(linetype = 2) %>%
+  linetype_sig_edges(linetype = 1) %>% 
   plot()
-
 
