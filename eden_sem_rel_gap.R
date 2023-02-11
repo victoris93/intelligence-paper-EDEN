@@ -50,12 +50,26 @@ colnames(sem_vars_rel_gap_vpiq_ADHD_11y) <- c("ID", "rel_gap_vpiq11",
 sem_ADHD_vars <- left_join(sem_vars_rel_gap_vpiq_ADHD_5y, sem_vars_rel_gap_vpiq_ADHD_11y)
 
 
-model_ADHD <- ' 
-# regressions 
-ADHD5 ~ rel_gap_vpiq5
-rel_gap_vpiq11 ~ rel_gap_vpiq5
-ADHD11 ~ rel_gap_vpiq5 + rel_gap_vpiq11 + ADHD5
+# standardize variables
+sem_ADHD_vars$ADHD5_std = (sem_ADHD_vars$ADHD5 - mean(sem_ADHD_vars$ADHD5)) / sd(sem_ADHD_vars$ADHD5)
+sem_ADHD_vars$rel_gap_vpiq5_std = (sem_ADHD_vars$rel_gap_vpiq5 - mean(sem_ADHD_vars$rel_gap_vpiq5)) / sd(sem_ADHD_vars$rel_gap_vpiq5)
+sem_ADHD_vars$ADHD11_std = (sem_ADHD_vars$ADHD11 - mean(sem_ADHD_vars$ADHD11, na.rm = TRUE)) / sd(sem_ADHD_vars$ADHD11, na.rm = TRUE)
+sem_ADHD_vars$rel_gap_vpiq11_std = (sem_ADHD_vars$rel_gap_vpiq11 - mean(sem_ADHD_vars$rel_gap_vpiq11, na.rm = TRUE)) / sd(sem_ADHD_vars$rel_gap_vpiq11, na.rm = TRUE)
+
+model_ADHD<-  '
+# correlations
+ADHD5_std ~~ rel_gap_vpiq5_std
+ADHD11_std ~~ rel_gap_vpiq11_std
+
+# auto-regressions
+rel_gap_vpiq11_std ~ rel_gap_vpiq5_std
+ADHD11_std ~ ADHD5_std
+
+# cross-lagged regressions
+rel_gap_vpiq11_std ~ ADHD5_std
+ADHD11_std ~ rel_gap_vpiq5_std
 '
+
 fit_ADHD <- sem(model_ADHD, data = sem_ADHD_vars) 
 summary(fit_ADHD, standardized = TRUE)
 parameterEstimates(fit_ADHD)
@@ -70,10 +84,13 @@ graph_data_rel_gap_vpiq_ADHD <- add_sig_levels_to_graph_data(graph_data_rel_gap_
 
 graph_data_rel_gap_vpiq_ADHD %>%
   edit_graph({ label = c("ADHD, 11y", "ADHD, 5y", "VIQ-PIQ, 11y", "VIQ-PIQ, 5y") }, element = "nodes") %>%
-  edit_graph({ color = c("black", "black", "red", "red", "black", "black", "black", "black", "black") }, element = "edges") %>%
-  edit_graph({ connect_from = c("top", "right", "top", "top", "right", "top", "bottom", "top", "bottom") }, element = "edges") %>%  edit_graph({ connect_to= c("bottom", "left", "bottom", "bottom", "left", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
-  linetype_nonsig_edges(linetype = 2) %>% 
+  edit_graph({ color = c("black", "black", "red", "red", "red", "red", "black", "black", "black", "black") }, element = "edges") %>%
+  edit_graph({ connect_from = c("top", "top", "right", "right", "bottom", "top", "right", "top", "bottom", "top") }, element = "edges") %>% 
+  edit_graph({ connect_to= c("bottom", "bottom", "left", "left", "top", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>%
+  edit_graph({ curvature= c(NA, NA, NA, NA, 60, -60, NA, NA, NA, NA) }, element = "edges") %>%
+  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
+  linetype_nonsig_edges(linetype = 2) %>%
+  linetype_sig_edges(linetype = 1) %>% 
   plot()
 
 ######## Internalizing Disorder
@@ -100,11 +117,24 @@ colnames(sem_vars_rel_gap_vpiq_dep_11y) <- c("ID", "rel_gap_vpiq11",
 sem_dep_vars <- left_join(sem_vars_rel_gap_vpiq_dep_5y, sem_vars_rel_gap_vpiq_dep_11y)
 
 
-model_dep <- ' 
-# regressions 
-dep5 ~ rel_gap_vpiq5
-rel_gap_vpiq11 ~ rel_gap_vpiq5
-dep11 ~ rel_gap_vpiq5 + rel_gap_vpiq11 + dep5
+# standardize variables
+sem_dep_vars$dep5_std = (sem_dep_vars$dep5 - mean(sem_dep_vars$dep5)) / sd(sem_dep_vars$dep5)
+sem_dep_vars$rel_gap_vpiq5_std = (sem_dep_vars$rel_gap_vpiq5 - mean(sem_dep_vars$rel_gap_vpiq5)) / sd(sem_dep_vars$rel_gap_vpiq5)
+sem_dep_vars$dep11_std = (sem_dep_vars$dep11 - mean(sem_dep_vars$dep11, na.rm = TRUE)) / sd(sem_dep_vars$dep11, na.rm = TRUE)
+sem_dep_vars$rel_gap_vpiq11_std = (sem_dep_vars$rel_gap_vpiq11 - mean(sem_dep_vars$rel_gap_vpiq11, na.rm = TRUE)) / sd(sem_dep_vars$rel_gap_vpiq11, na.rm = TRUE)
+
+model_dep<-  '
+# correlations
+dep5_std ~~ rel_gap_vpiq5_std
+dep11_std ~~ rel_gap_vpiq11_std
+
+# auto-regressions
+rel_gap_vpiq11_std ~ rel_gap_vpiq5_std
+dep11_std ~ dep5_std
+
+# cross-lagged regressions
+rel_gap_vpiq11_std ~ dep5_std
+dep11_std ~ rel_gap_vpiq5_std
 '
 
 fit_dep <- sem(model_dep, data = sem_dep_vars) 
@@ -121,13 +151,14 @@ graph_data_rel_gap_vpiq_dep <- add_sig_levels_to_graph_data(graph_data_rel_gap_v
 
 graph_data_rel_gap_vpiq_dep %>%
   edit_graph({ label = c("Int. Dis., 11y", "Int. Dis., 5y", "VIQ-PIQ, 11y", "VIQ-PIQ, 5y") }, element = "nodes") %>%
-  edit_graph({ color = c("black", "black", "red", "red", "black", "black", "black", "black", "black") }, element = "edges") %>%
-  edit_graph({ connect_from = c("top", "right", "top", "top", "right", "top", "bottom", "top", "bottom") }, element = "edges") %>%  edit_graph({ connect_to= c("bottom", "left", "bottom", "bottom", "left", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
-  linetype_nonsig_edges(linetype = 2) %>% 
+  edit_graph({ color = c("black", "black", "red", "red", "red", "red", "black", "black", "black", "black") }, element = "edges") %>%
+  edit_graph({ connect_from = c("top", "top", "right", "right", "bottom", "top", "right", "top", "bottom", "top") }, element = "edges") %>% 
+  edit_graph({ connect_to= c("bottom", "bottom", "left", "left", "top", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>%
+  edit_graph({ curvature= c(NA, NA, NA, NA, 60, -60, NA, NA, NA, NA) }, element = "edges") %>%
+  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
+  linetype_nonsig_edges(linetype = 2) %>%
+  linetype_sig_edges(linetype = 1) %>% 
   plot()
-
-graph_sem(fit_dep, layout = layout)
       
 ######## Social Problems
 
@@ -152,16 +183,26 @@ colnames(sem_vars_rel_gap_vpiq_social_11y) <- c("ID", "rel_gap_vpiq11",
 
 sem_social_vars <- left_join(sem_vars_rel_gap_vpiq_social_5y, sem_vars_rel_gap_vpiq_social_11y)
 
+# standardize variables
+sem_social_vars$social5_std = (sem_social_vars$social5 - mean(sem_social_vars$social5)) / sd(sem_social_vars$social5)
+sem_social_vars$rel_gap_vpiq5_std = (sem_social_vars$rel_gap_vpiq5 - mean(sem_social_vars$rel_gap_vpiq5)) / sd(sem_social_vars$rel_gap_vpiq5)
+sem_social_vars$social11_std = (sem_social_vars$social11 - mean(sem_social_vars$social11, na.rm = TRUE)) / sd(sem_social_vars$social11, na.rm = TRUE)
+sem_social_vars$rel_gap_vpiq11_std = (sem_social_vars$rel_gap_vpiq11 - mean(sem_social_vars$rel_gap_vpiq11, na.rm = TRUE)) / sd(sem_social_vars$rel_gap_vpiq11, na.rm = TRUE)
 
-common_ids <- intersect(na.omit(sem_social_vars)$ID, sem_vars_rel_gap_vpiq_social_11y$ID)
-not_matching_ids <- sem_vars_rel_gap_vpiq_social_5y$ID[!sem_vars_rel_gap_vpiq_social_5y$ID %in% common_ids]
+model_social<-  '
+# correlations
+social5_std ~~ rel_gap_vpiq5_std
+social11_std ~~ rel_gap_vpiq11_std
 
-model_social <- ' 
-# regressions 
-social5 ~ rel_gap_vpiq5
-rel_gap_vpiq11 ~ rel_gap_vpiq5
-social11 ~ rel_gap_vpiq5 + rel_gap_vpiq11 + social5
+# auto-regressions
+rel_gap_vpiq11_std ~ rel_gap_vpiq5_std
+social11_std ~ social5_std
+
+# cross-lagged regressions
+rel_gap_vpiq11_std ~ social5_std
+social11_std ~ rel_gap_vpiq5_std
 '
+
 fit_social <- sem(model_social, data = sem_social_vars) 
 summary(fit_social, standardized = TRUE)
 parameterEstimates(fit_social)
@@ -174,13 +215,15 @@ graph_sem(fit_social, layout = layout)
 graph_data_rel_gap_vpiq_social <- prepare_graph(model = fit_social, layout = layout)
 graph_data_rel_gap_vpiq_social <- add_sig_levels_to_graph_data(graph_data_rel_gap_vpiq_social, c(0.05, 0.004))
 
-
 graph_data_rel_gap_vpiq_social %>%
   edit_graph({ label = c("VIQ-PIQ, 11y", "VIQ-PIQ, 5y", "Social Pr., 11y", "Social Pr., 5y") }, element = "nodes") %>%
-  edit_graph({ color = c("black", "black", "red", "red", "black", "black", "black", "black", "black") }, element = "edges") %>%
-  edit_graph({ connect_from = c("top", "right", "top", "top", "right", "top", "bottom", "top", "bottom") }, element = "edges") %>%  edit_graph({ connect_to= c("bottom", "left", "bottom", "bottom", "left", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
-  linetype_nonsig_edges(linetype = 2) %>% 
+  edit_graph({ color = c("black", "black", "red", "red", "red", "red", "black", "black", "black", "black") }, element = "edges") %>%
+  edit_graph({ connect_from = c("top", "top", "right", "right", "bottom", "top", "right", "top", "bottom", "top") }, element = "edges") %>% 
+  edit_graph({ connect_to= c("bottom", "bottom", "left", "left", "top", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>%
+  edit_graph({ curvature= c(NA, NA, NA, NA, 60, -60, NA, NA, NA, NA) }, element = "edges") %>%
+  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
+  linetype_nonsig_edges(linetype = 2) %>%
+  linetype_sig_edges(linetype = 1) %>% 
   plot()
 
 graph_sem(fit_social, layout = layout)
@@ -210,11 +253,24 @@ sem_conduct_vars <- left_join(sem_vars_rel_gap_vpiq_conduct_5y, sem_vars_rel_gap
 
 ####### FIT MODEL
 
-model_conduct <- ' 
-# regressions 
-conduct5 ~ rel_gap_vpiq5
-rel_gap_vpiq11 ~ rel_gap_vpiq5
-conduct11 ~ rel_gap_vpiq5 + rel_gap_vpiq11 + conduct5
+# standardize variables
+sem_conduct_vars$conduct5_std = (sem_conduct_vars$conduct5 - mean(sem_conduct_vars$conduct5)) / sd(sem_conduct_vars$conduct5)
+sem_conduct_vars$rel_gap_vpiq5_std = (sem_conduct_vars$rel_gap_vpiq5 - mean(sem_conduct_vars$rel_gap_vpiq5)) / sd(sem_conduct_vars$rel_gap_vpiq5)
+sem_conduct_vars$conduct11_std = (sem_conduct_vars$conduct11 - mean(sem_conduct_vars$conduct11, na.rm = TRUE)) / sd(sem_conduct_vars$conduct11, na.rm = TRUE)
+sem_conduct_vars$rel_gap_vpiq11_std = (sem_conduct_vars$rel_gap_vpiq11 - mean(sem_conduct_vars$rel_gap_vpiq11, na.rm = TRUE)) / sd(sem_conduct_vars$rel_gap_vpiq11, na.rm = TRUE)
+
+model_conduct<-  '
+# correlations
+conduct5_std ~~ rel_gap_vpiq5_std
+conduct11_std ~~ rel_gap_vpiq11_std
+
+# auto-regressions
+rel_gap_vpiq11_std ~ rel_gap_vpiq5_std
+conduct11_std ~ conduct5_std
+
+# cross-lagged regressions
+rel_gap_vpiq11_std ~ conduct5_std
+conduct11_std ~ rel_gap_vpiq5_std
 '
 
 fit_conduct <- sem(model_conduct, data = sem_conduct_vars) 
@@ -232,10 +288,11 @@ graph_data_rel_gap_vpiq_conduct <- add_sig_levels_to_graph_data(graph_data_rel_g
 
 graph_data_rel_gap_vpiq_conduct %>%
   edit_graph({ label = c( "VIQ-PIQ, 11y", "VIQ-PIQ, 5y", "Conduct Dis., 11y", "Conduct Dis., 5y") }, element = "nodes") %>%
-  edit_graph({ color = c("black", "black", "red", "red", "black", "black", "black", "black", "black") }, element = "edges") %>%
-  edit_graph({ connect_from = c("top", "right", "top", "top", "right", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ connect_to= c("bottom", "left", "bottom", "bottom", "left", "top", "bottom", "top", "bottom") }, element = "edges") %>%
-  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
-  linetype_nonsig_edges(linetype = 2) %>% 
+  edit_graph({ color = c("black", "black", "red", "red", "red", "red", "black", "black", "black", "black") }, element = "edges") %>%
+  edit_graph({ connect_from = c("top", "top", "right", "right", "bottom", "top", "right", "top", "bottom", "top") }, element = "edges") %>% 
+  edit_graph({ connect_to= c("bottom", "bottom", "left", "left", "top", "bottom", "right", "top", "bottom", "top") }, element = "edges") %>%
+  edit_graph({ curvature= c(NA, NA, NA, NA, 60, -60, NA, NA, NA, NA) }, element = "edges") %>%
+  edit_graph({ show = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)}, element = "edges") %>%
+  linetype_nonsig_edges(linetype = 2) %>%
+  linetype_sig_edges(linetype = 1) %>% 
   plot()
-
